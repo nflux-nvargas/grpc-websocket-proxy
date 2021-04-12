@@ -228,7 +228,12 @@ func (p *Proxy) proxy(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		if p.pingInterval > 0 && p.pingWait > 0 && p.pongWait > 0 {
 			conn.SetReadDeadline(time.Now().Add(p.pongWait))
-			conn.SetPongHandler(func(string) error { conn.SetReadDeadline(time.Now().Add(p.pongWait)); return nil })
+			conn.SetPongHandler(func(string) error {
+                                dead := time.Now().Add(p.pongWait)
+                                conn.SetReadDeadline(dead)
+                                p.logger.Debugln("read deadline", dead)
+                                return nil
+                        })
 		}
 		defer func() {
 			cancelFn()
@@ -275,11 +280,14 @@ func (p *Proxy) proxy(w http.ResponseWriter, r *http.Request) {
 					p.logger.Debugln("ping loop done")
 					return
 				case <-ticker.C:
-					conn.SetWriteDeadline(time.Now().Add(p.pingWait))
+                                        dead := time.Now().Add(p.pingWait)
+                                        p.logger.Debugln("write deadline", dead)
+					conn.SetWriteDeadline(dead)
 					if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 						return
 					}
 					conn.SetWriteDeadline(time.Time{})
+                                        p.logger.Debugln("write deadline cleared")
 				}
 			}
 		}()
