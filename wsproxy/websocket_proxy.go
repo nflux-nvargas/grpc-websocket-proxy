@@ -279,6 +279,7 @@ func (p *Proxy) proxy(w http.ResponseWriter, r *http.Request) {
 					if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 						return
 					}
+					conn.SetWriteDeadline(time.Time{})
 				}
 			}
 		}()
